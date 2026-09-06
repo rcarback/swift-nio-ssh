@@ -147,3 +147,13 @@ Global requests are initiated using `NIOSSHHandler.sendGlobalRequest`, and are r
 Servers may be notified of and respond to these requests using a `GlobalRequestDelegate`. The method to implement here is `tcpForwardingRequest(_:handler:promise:)`. This delegate method will be invoked any time a global request is received. The response to the request is passed into `promise`.
 
 Forwarded channels are then sent from server to client using the `.forwardedTCPIP` channel type.
+
+### Hybrid post-quantum key exchange in this fork
+
+This fork prefers `mlkem768x25519-sha256` and negotiates the existing classical algorithms with peers that do not support it. [RFC 10042](https://www.rfc-editor.org/rfc/rfc10042.html) defines the hybrid exchange. Each exchange generates fresh ML-KEM-768 and X25519 keys. Host authentication and user authentication continue to use their existing algorithms.
+
+`PortableMLKEM768` calls the BoringSSL implementation vendored by [swift-crypto 4.5.2](https://github.com/apple/swift-crypto/tree/4.5.2). The adapter uses the `CCryptoBoringSSL` module linked through the `CryptoExtras` product. This supports older Apple deployment targets, including iOS 17. The public `Crypto` ML-KEM API requires iOS 26 on Apple platforms.
+
+The C module is an internal dependency API. `Package.swift` pins swift-crypto to exactly 4.5.2 to prevent changes to that API without review. Before updating the pin, review the adapter against the vendored headers and rerun malformed-input, rekey, iOS deployment-target, and OpenSSH interoperability tests. The adapter implements no cryptographic primitive. BoringSSL and swift-crypto retain their upstream Apache 2.0 licensing and attribution.
+
+The parent channel emits `NIOSSHKeyExchangeCompletedEvent` after it installs the inbound keys for each exchange. Its `keyExchangeAlgorithm` property identifies the negotiated algorithm. This event does not mean that user authentication has completed.

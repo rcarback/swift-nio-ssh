@@ -38,7 +38,9 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.81.0"),
-        .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0"..<"5.0.0"),
+        // PortableMLKEM768 uses the vendored C API. Review its ABI and rerun
+        // interoperability tests before updating this exact dependency pin.
+        .package(url: "https://github.com/apple/swift-crypto.git", exact: "4.5.2"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.2"),
     ],
     targets: [
@@ -49,6 +51,7 @@ let package = Package(
                 .product(name: "NIOConcurrencyHelpers", package: "swift-nio"),
                 .product(name: "NIOFoundationCompat", package: "swift-nio"),
                 .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "CryptoExtras", package: "swift-crypto"),
                 .product(name: "Atomics", package: "swift-atomics"),
             ],
             swiftSettings: swiftSettings

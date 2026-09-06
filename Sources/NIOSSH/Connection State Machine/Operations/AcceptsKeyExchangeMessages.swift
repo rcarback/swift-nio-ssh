@@ -50,9 +50,13 @@ extension AcceptsKeyExchangeMessages {
         return .possibleFutureMessage(message)
     }
 
-    mutating func receiveNewKeysMessage() throws {
+    mutating func receiveNewKeysMessage() throws -> NIOSSHKeyExchangeCompletedEvent {
+        guard let algorithm = self.keyExchangeStateMachine.negotiatedKeyExchangeAlgorithm else {
+            throw NIOSSHError.keyExchangeNegotiationFailure
+        }
         // Received a new keys message. Apply the encryption keys to the parser.
         let result = try self.keyExchangeStateMachine.handleNewKeys()
         self.parser.addEncryption(result)
+        return NIOSSHKeyExchangeCompletedEvent(keyExchangeAlgorithm: String(algorithm))
     }
 }

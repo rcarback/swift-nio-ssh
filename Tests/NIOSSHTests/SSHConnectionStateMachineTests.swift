@@ -176,8 +176,10 @@ final class SSHConnectionStateMachineTests: XCTestCase {
                                     }
                                 }
                             case .some(.forwardToMultiplexer), .some(.globalRequest), .some(.globalRequestResponse),
-                                .some(.disconnect), .some(.event):
+                                .some(.disconnect):
                                 fatalError("Currently unsupported")
+                            case .some(.event):
+                                ()
                             }
                         }
                     }
@@ -249,8 +251,10 @@ final class SSHConnectionStateMachineTests: XCTestCase {
                         }
                     }
                 case .some(.forwardToMultiplexer), .some(.globalRequest), .some(.globalRequestResponse),
-                    .some(.disconnect), .some(.event):
+                    .some(.disconnect):
                     fatalError("Currently unsupported")
+                case .some(.event):
+                    ()
                 }
             }
 
