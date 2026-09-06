@@ -16,6 +16,7 @@ import Crypto
 import NIOCore
 import NIOEmbedded
 import XCTest
+import _CryptoExtras
 
 @testable import NIOSSH
 
@@ -568,7 +569,17 @@ final class SSHKeyExchangeStateMachineTests: XCTestCase {
         try self.straightforwardCustomHostKeyHandshake(hostKey: .init(p521Key: .init()))
     }
 
-    private func straightforwardCustomHostKeyHandshake(hostKey: NIOSSHPrivateKey) throws {
+    func testRSAHostKeyNegotiatesBothSHA2Algorithms() throws {
+        let key = NIOSSHPrivateKey(rsaKey: try _RSA.Signing.PrivateKey(keySize: .bits2048))
+        for algorithm in [RSASignatureAlgorithm.sha512, .sha256] {
+            try self.straightforwardCustomHostKeyHandshake(hostKey: key, rsaAlgorithm: algorithm)
+        }
+    }
+
+    private func straightforwardCustomHostKeyHandshake(
+        hostKey: NIOSSHPrivateKey,
+        rsaAlgorithm: RSASignatureAlgorithm? = nil
+    ) throws {
         // This test runs a full key exchange but the server races its newKeys message right behind the ecdh reply.
         let allocator = ByteBufferAllocator()
         let loop = EmbeddedEventLoop()
@@ -593,8 +604,12 @@ final class SSHKeyExchangeStateMachineTests: XCTestCase {
         )
 
         // Both sides begin by generating a key exchange message.
-        let serverMessage = server.createKeyExchangeMessage()
-        let clientMessage = client.createKeyExchangeMessage()
+        var serverMessage = server.createKeyExchangeMessage()
+        var clientMessage = client.createKeyExchangeMessage()
+        if let rsaAlgorithm {
+            clientMessage.serverHostKeyAlgorithms = [Substring(rsaAlgorithm.algorithmName)]
+            serverMessage.serverHostKeyAlgorithms = [Substring(rsaAlgorithm.algorithmName)]
+        }
         server.send(keyExchange: serverMessage)
         client.send(keyExchange: clientMessage)
 
@@ -606,6 +621,9 @@ final class SSHKeyExchangeStateMachineTests: XCTestCase {
 
         // Now the server receives the ECDH init message and generates the reply, as well as the newKeys message.
         let ecdhReply = try assertGeneratesECDHKeyExchangeReplyAndNewKeys(server.handle(keyExchangeInit: ecdhInit))
+        if let rsaAlgorithm {
+            XCTAssertEqual(ecdhReply.signature.rsaSignatureAlgorithm, rsaAlgorithm)
+        }
         XCTAssertNoThrow(try server.send(keyExchangeReply: ecdhReply))
         let serverOutboundProtection = server.sendNewKeys()
 

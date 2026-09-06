@@ -32,6 +32,7 @@ protocol EllipticCurveKeyExchangeProtocol: _NIOSSHSendableMetatype {
     mutating func completeKeyExchangeServerSide(
         clientKeyExchangeMessage message: SSHMessage.KeyExchangeECDHInitMessage,
         serverHostKey: NIOSSHPrivateKey,
+        rsaSignatureAlgorithm: RSASignatureAlgorithm,
         initialExchangeBytes: inout ByteBuffer,
         allocator: ByteBufferAllocator,
         expectedKeySizes: ExpectedKeySizes
@@ -90,6 +91,7 @@ extension EllipticCurveKeyExchange {
     mutating func completeKeyExchangeServerSide(
         clientKeyExchangeMessage message: SSHMessage.KeyExchangeECDHInitMessage,
         serverHostKey: NIOSSHPrivateKey,
+        rsaSignatureAlgorithm: RSASignatureAlgorithm = .sha512,
         initialExchangeBytes: inout ByteBuffer,
         allocator: ByteBufferAllocator,
         expectedKeySizes: ExpectedKeySizes
@@ -106,7 +108,10 @@ extension EllipticCurveKeyExchange {
         )
 
         // We should now sign the exchange hash.
-        let exchangeHashSignature = try serverHostKey.sign(digest: kexResult.exchangeHash)
+        let exchangeHashSignature = try serverHostKey.sign(
+            digest: kexResult.exchangeHash,
+            rsaSignatureAlgorithm: rsaSignatureAlgorithm
+        )
 
         // Ok, time to write the final message. We need to write our public key into it.
         // The largest key we're likely to end up with here is 256 bytes.

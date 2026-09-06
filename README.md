@@ -147,3 +147,11 @@ Global requests are initiated using `NIOSSHHandler.sendGlobalRequest`, and are r
 Servers may be notified of and respond to these requests using a `GlobalRequestDelegate`. The method to implement here is `tcpForwardingRequest(_:handler:promise:)`. This delegate method will be invoked any time a global request is received. The response to the request is passed into `promise`.
 
 Forwarded channels are then sent from server to client using the `.forwardedTCPIP` channel type.
+
+## gterm RSA fork
+
+This branch adds RSA-SHA2-512 and RSA-SHA2-256 authentication and host keys.
+It adapts RSA wire support from [upstream PR 219](https://github.com/apple/swift-nio-ssh/pull/219),
+with corrections to signature hashing, algorithm negotiation, and input validation.
+Legacy SHA1 signatures are disabled. RSA certificate authentication is not added.
+Swift Crypto 3.12 or newer (below 5.0) supplies RSA primitives.

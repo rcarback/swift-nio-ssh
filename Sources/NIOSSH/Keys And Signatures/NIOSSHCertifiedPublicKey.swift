@@ -359,6 +359,8 @@ extension NIOSSHCertifiedPublicKey {
             return Self.p384KeyPrefix
         case .ecdsaP521:
             return Self.p521KeyPrefix
+        case .rsa:
+            return "ssh-rsa-cert-v01@openssh.com".utf8
         case .certified:
             preconditionFailure("base key cannot be certified")
         }
@@ -386,6 +388,8 @@ extension NIOSSHCertifiedPublicKey {
             return NIOSSHPublicKey.ecdsaP384PublicKeyPrefix
         } else if prefix.elementsEqual(Self.p521KeyPrefix) {
             return NIOSSHPublicKey.ecdsaP521PublicKeyPrefix
+        } else if prefix.elementsEqual("ssh-rsa-cert-v01@openssh.com".utf8) {
+            return NIOSSHPublicKey.rsaPublicKeyPrefix
         } else {
             throw NIOSSHError.unknownPublicKey(algorithm: String(decoding: prefix, as: UTF8.self))
         }
