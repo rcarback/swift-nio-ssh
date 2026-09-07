@@ -38,7 +38,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.81.0"),
-        .package(url: "https://github.com/apple/swift-crypto.git", "3.12.0"..<"5.0.0"),
+        .package(url: "https://github.com/rcarback/swift-crypto.git", revision: "23ddb5ee80893254a9b353668843aff5166dc4cc"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.2"),
     ],
     targets: [

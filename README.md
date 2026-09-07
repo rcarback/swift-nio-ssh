@@ -154,4 +154,4 @@ This branch adds RSA-SHA2-512 and RSA-SHA2-256 authentication and host keys.
 It adapts RSA wire support from [upstream PR 219](https://github.com/apple/swift-nio-ssh/pull/219),
 with corrections to signature hashing, algorithm negotiation, and input validation.
 Legacy SHA1 signatures are disabled. RSA certificate authentication is not added.
-Swift Crypto 3.12 or newer (below 5.0) supplies RSA primitives.
+A pinned [Swift Crypto fork](https://github.com/rcarback/swift-crypto/tree/gterm/large-rsa) supplies RSA primitives up to 32768 bits. Its existing portable arithmetic handles operands above the unchanged 8192-bit assembly limit.
