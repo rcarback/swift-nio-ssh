@@ -164,9 +164,9 @@ struct SSHConnectionStateMachine {
                         self = .keyExchange(state)
                         return result
                     case .newKeys:
-                        try state.receiveNewKeysMessage()
+                        let event = try state.receiveNewKeysMessage()
                         self = .receivedNewKeys(.init(keyExchangeState: state, loop: loop))
-                        return .noMessage
+                        return .event(event)
                     case .disconnect:
                         self = .receivedDisconnect(state.role)
                         return .disconnect
@@ -223,9 +223,9 @@ struct SSHConnectionStateMachine {
                         self = .sentNewKeys(state)
                         return result
                     case .newKeys:
-                        try state.receiveNewKeysMessage()
+                        let event = try state.receiveNewKeysMessage()
                         self = .userAuthentication(.init(sentNewKeysState: state))
-                        return .noMessage
+                        return .event(event)
                     case .disconnect:
                         self = .receivedDisconnect(state.role)
                         return .disconnect
@@ -590,10 +590,10 @@ struct SSHConnectionStateMachine {
                         self = .rekeying(state)
                         return result
                     case .newKeys:
-                        try state.receiveNewKeysMessage()
+                        let event = try state.receiveNewKeysMessage()
                         let newState = RekeyingReceivedNewKeysState(state)
                         self = .rekeyingReceivedNewKeysState(newState)
-                        return .noMessage
+                        return .event(event)
                     case .disconnect:
                         self = .receivedDisconnect(state.role)
                         return .disconnect
@@ -721,10 +721,10 @@ struct SSHConnectionStateMachine {
                         self = .rekeyingSentNewKeysState(state)
                         return result
                     case .newKeys:
-                        try state.receiveNewKeysMessage()
+                        let event = try state.receiveNewKeysMessage()
                         let newState = ActiveState(state)
                         self = .active(newState)
-                        return .noMessage
+                        return .event(event)
                     case .disconnect:
                         self = .receivedDisconnect(state.role)
                         return .disconnect

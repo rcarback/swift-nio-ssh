@@ -505,6 +505,24 @@ class EndToEndTests: XCTestCase {
         #endif
     }
 
+    func testNegotiatedKeyExchangeEventsIncludeRekey() throws {
+        try self.channel.configureWithHarness(TestHarness())
+        let clientEvents = UserEventExpecter()
+        let serverEvents = UserEventExpecter()
+        try self.channel.client.pipeline.syncOperations.addHandler(clientEvents)
+        try self.channel.server.pipeline.syncOperations.addHandler(serverEvents)
+        try self.channel.activate()
+        try self.channel.interactInMemory()
+        try self.channel.clientSSHHandler!._rekey()
+        try self.channel.interactInMemory()
+        try self.channel.serverSSHHandler!._rekey()
+        try self.channel.interactInMemory()
+        for recorder in [clientEvents, serverEvents] {
+            let events = recorder.userEvents.compactMap { $0 as? NIOSSHKeyExchangeCompletedEvent }
+            XCTAssertEqual(events.map(\.keyExchangeAlgorithm), Array(repeating: "mlkem768x25519-sha256", count: 3))
+        }
+    }
+
     func testSupportClientInitiatedRekeying() throws {
         XCTAssertNoThrow(try self.channel.configureWithHarness(TestHarness()))
         XCTAssertNoThrow(try self.channel.activate())
@@ -726,6 +744,7 @@ class EndToEndTests: XCTestCase {
             }
 
             func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
+                guard event is NIOUserAuthBannerEvent || event is UserAuthSuccessEvent else { return }
                 guard let promise = self.promise else { return }
                 self.promise = nil
 
@@ -770,6 +789,7 @@ class EndToEndTests: XCTestCase {
             }
 
             func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
+                guard event is NIOUserAuthBannerEvent || event is UserAuthSuccessEvent else { return }
                 guard let promise = self.promise else { return }
                 self.promise = nil
 

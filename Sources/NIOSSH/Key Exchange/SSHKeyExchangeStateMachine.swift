@@ -152,11 +152,11 @@ struct SSHKeyExchangeStateMachine {
 
                 // verify algorithms
                 let negotiated = try self.negotiatedAlgorithms(message)
-                let exchanger = try self.exchangerForAlgorithm(negotiated.negotiatedKeyExchangeAlgorithm)
+                var exchanger = try self.exchangerForAlgorithm(negotiated.negotiatedKeyExchangeAlgorithm)
 
                 // Ok, we need to send the key exchange message.
                 let message = SSHMessage.keyExchangeInit(
-                    exchanger.initiateKeyExchangeClientSide(allocator: self.allocator)
+                    try exchanger.initiateKeyExchangeClientSide(allocator: self.allocator)
                 )
                 self.state = .awaitingKeyExchangeInit(exchange: exchanger, negotiated: negotiated)
                 return SSHMultiMessage(message)
@@ -188,14 +188,14 @@ struct SSHKeyExchangeStateMachine {
             }
 
             let negotiated = try self.negotiatedAlgorithms(message)
-            let exchanger = try self.exchangerForAlgorithm(negotiated.negotiatedKeyExchangeAlgorithm)
+            var exchanger = try self.exchangerForAlgorithm(negotiated.negotiatedKeyExchangeAlgorithm)
 
             let result: SSHMultiMessage
             switch self.role {
             case .client:
                 result = SSHMultiMessage(
                     .keyExchange(ourMessage),
-                    SSHMessage.keyExchangeInit(exchanger.initiateKeyExchangeClientSide(allocator: self.allocator))
+                    SSHMessage.keyExchangeInit(try exchanger.initiateKeyExchangeClientSide(allocator: self.allocator))
                 )
             case .server:
                 result = SSHMultiMessage(.keyExchange(ourMessage))
@@ -596,6 +596,7 @@ struct SSHKeyExchangeStateMachine {
 extension SSHKeyExchangeStateMachine {
     // For now this is a static list.
     static let supportedKeyExchangeImplementations: [EllipticCurveKeyExchangeProtocol.Type] = [
+        MLKEM768X25519KeyExchange.self,
         EllipticCurveKeyExchange<P384.KeyAgreement.PrivateKey>.self,
         EllipticCurveKeyExchange<P256.KeyAgreement.PrivateKey>.self,
         EllipticCurveKeyExchange<P521.KeyAgreement.PrivateKey>.self,
@@ -641,6 +642,23 @@ extension SSHKeyExchangeStateMachine {
         case .idle, .keyExchangeSent, .keyExchangeReceived, .awaitingKeyExchangeInit,
             .awaitingKeyExchangeInitInvalidGuess, .keyExchangeInitSent:
             return nil
+        }
+    }
+
+    var negotiatedKeyExchangeAlgorithm: Substring? {
+        switch self.state {
+        case .idle, .keyExchangeSent, .complete:
+            return nil
+
+        case .keyExchangeReceived(_, let negotiated, _),
+            .awaitingKeyExchangeInitInvalidGuess(_, let negotiated),
+            .awaitingKeyExchangeInit(_, let negotiated),
+            .keyExchangeInitReceived(_, let negotiated),
+            .keyExchangeInitSent(_, let negotiated),
+            .keysExchanged(_, _, let negotiated),
+            .newKeysReceived(_, _, let negotiated),
+            .newKeysSent(_, _, let negotiated):
+            return negotiated.negotiatedKeyExchangeAlgorithm
         }
     }
 

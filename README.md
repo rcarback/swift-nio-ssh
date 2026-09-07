@@ -155,3 +155,13 @@ It adapts RSA wire support from [upstream PR 219](https://github.com/apple/swift
 with corrections to signature hashing, algorithm negotiation, and input validation.
 Legacy SHA1 signatures are disabled. RSA certificate authentication is not added.
 A pinned [Swift Crypto fork](https://github.com/rcarback/swift-crypto/tree/gterm/large-rsa) supplies RSA primitives up to 32768 bits. Its existing portable arithmetic handles operands above the unchanged 8192-bit assembly limit.
+
+### Hybrid post-quantum key exchange in this fork
+
+This fork prefers `mlkem768x25519-sha256` and negotiates the existing classical algorithms with peers that do not support it. [RFC 10042](https://www.rfc-editor.org/rfc/rfc10042.html) defines the hybrid exchange. Each exchange generates fresh ML-KEM-768 and X25519 keys. Host authentication and user authentication continue to use their existing algorithms.
+
+`PortableMLKEM768` calls the BoringSSL implementation vendored by [swift-crypto 4.5.2](https://github.com/apple/swift-crypto/tree/4.5.2). The adapter uses the `CCryptoBoringSSL` module linked through the `CryptoExtras` product. This supports older Apple deployment targets, including iOS 17. The public `Crypto` ML-KEM API requires iOS 26 on Apple platforms.
+
+The C module is an internal dependency API. `Package.swift` pins the Swift Crypto 4.5.2-based RSA fork to an immutable revision to prevent changes to that API without review. Before updating the pin, review the adapter against the vendored headers and rerun malformed-input, rekey, iOS deployment-target, and OpenSSH interoperability tests. The adapter implements no cryptographic primitive. BoringSSL and swift-crypto retain their upstream Apache 2.0 licensing and attribution.
+
+The parent channel emits `NIOSSHKeyExchangeCompletedEvent` after it installs the inbound keys for each exchange. Its `keyExchangeAlgorithm` property identifies the negotiated algorithm. This event does not mean that user authentication has completed.
