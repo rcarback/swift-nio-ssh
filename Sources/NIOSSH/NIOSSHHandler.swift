@@ -321,6 +321,38 @@ extension NIOSSHHandler {
         self.sendGlobalRequestsIfPossible()
     }
 
+    /// Send a global request with a caller-supplied name.
+    ///
+    /// Peers answer a request name they do not recognise with
+    /// `SSH_MSG_REQUEST_FAILURE`, which fails `promise` with
+    /// ``NIOSSHError/ErrorType/globalRequestRefused``. Keepalives rely on exactly
+    /// that: `keepalive@openssh.com` is deliberately a name no server implements,
+    /// and the refusal is still a complete round-trip. Callers that only want to
+    /// know whether the connection is alive should treat that error as success.
+    ///
+    /// This function is **not** thread-safe: it may only be called from on the channel.
+    ///
+    /// - parameters:
+    ///     - name: The request name, for example `keepalive@openssh.com`.
+    ///     - wantReply: Whether the peer must answer. Liveness checks need `true`.
+    ///     - data: The request-specific payload. Empty by default.
+    ///     - promise: An `EventLoopPromise` fulfilled with the response payload when
+    ///         the peer accepts the request. Fails if the peer refuses the request or
+    ///         it could not be sent.
+    public func sendGlobalRequest(
+        name: String,
+        wantReply: Bool = true,
+        data: ByteBuffer? = nil,
+        promise: EventLoopPromise<ByteBuffer?>? = nil
+    ) {
+        let payload = data ?? ByteBufferAllocator().buffer(capacity: 0)
+        let message = SSHMessage.GlobalRequestMessage(
+            wantReply: wantReply,
+            type: .unknown(name, payload)
+        )
+        self.sendGlobalRequestMessage(message, promise: promise)
+    }
+
     /// Sends a global request of any kind. This is commonly used for TCP forwarding requests, but can be used to extend the protocol.
     ///
     /// This function is **not** thread-safe: it may only be called from on the channel.

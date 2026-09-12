@@ -395,6 +395,44 @@ class EndToEndTests: XCTestCase {
         XCTAssertNil(try secondReply.futureResult.wait())
     }
 
+    func testSendGlobalRequestRefusalProvesLiveness() throws {
+        // A keepalive uses a request name no server implements. The peer answers
+        // SSH_MSG_REQUEST_FAILURE, which is a complete round-trip, so callers
+        // treat `.globalRequestRefused` as proof the connection is alive.
+        XCTAssertNoThrow(try self.channel.configureWithHarness(TestHarness()))
+        XCTAssertNoThrow(try self.channel.activate())
+        XCTAssertNoThrow(try self.channel.interactInMemory())
+
+        // Force unwrap is used, because this is a test and the handler must exist
+        let clientSSHHandler = self.channel.clientSSHHandler!
+
+        let reply = self.channel.client.eventLoop.makePromise(of: ByteBuffer?.self)
+        clientSSHHandler.sendGlobalRequest(name: "keepalive@openssh.com", promise: reply)
+
+        XCTAssertNoThrow(try self.channel.interactInMemory())
+        XCTAssertThrowsError(try reply.futureResult.wait()) { error in
+            XCTAssertEqual((error as? NIOSSHError)?.type, .globalRequestRefused)
+        }
+    }
+
+    func testSendGlobalRequestWithoutReplyCompletesWithNil() throws {
+        XCTAssertNoThrow(try self.channel.configureWithHarness(TestHarness()))
+        XCTAssertNoThrow(try self.channel.activate())
+        XCTAssertNoThrow(try self.channel.interactInMemory())
+
+        let clientSSHHandler = self.channel.clientSSHHandler!
+
+        let reply = self.channel.client.eventLoop.makePromise(of: ByteBuffer?.self)
+        clientSSHHandler.sendGlobalRequest(
+            name: "keepalive@openssh.com",
+            wantReply: false,
+            promise: reply
+        )
+
+        XCTAssertNoThrow(try self.channel.interactInMemory())
+        XCTAssertNil(try reply.futureResult.wait())
+    }
+
     func testGlobalRequestTooEarlyIsDelayed() throws {
         let completed = NIOLoopBoundBox(false, eventLoop: self.channel.client.eventLoop)
         let promise = self.channel.client.eventLoop.makePromise(of: GlobalRequest.TCPForwardingResponse?.self)
